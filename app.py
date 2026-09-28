@@ -8,17 +8,52 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.font_manager as fm
 
-# --- [기본 폰트 및 시각화 스타일 설정 (한글 폰트 깨짐 방지 및 크기 대응)] ---
-# 운영체제별 대표 한글 폰트 지정 (윈도우: 맑은 고딕, 맥/리눅스: AppleGothic 또는 NanumGothic)
+# --- [한글 폰트 깨짐 방지 및 다크/라이트 모드 스타일 설정] ---
 plt.rcParams['axes.unicode_minus'] = False
-if os.name == 'nt':
-    plt.rc('font', family='Malgun Gothic')
-else:
-    plt.rc('font', family='AppleGothic')
 
+# 시스템 환경에 따른 한글 폰트 강제 설정 및 등록
+def set_korean_font():
+    font_path = None
+    if os.name == 'nt':  # Windows
+        possible_paths = [
+            "C:/Windows/Fonts/malgun.ttf",
+            "C:/Windows/Fonts/NanumGothic.ttf"
+        ]
+        for p in possible_paths:
+            if os.path.exists(p):
+                font_path = p
+                break
+        if font_path:
+            font_name = fm.FontProperties(fname=font_path).get_name()
+            plt.rc('font', family=font_name)
+        else:
+            plt.rc('font', family='Malgun Gothic')
+    else:  # Linux / Mac (Streamlit Cloud 환경 포함)
+        # 시스템에 설치된 나눔고딕 등 확인
+        nanum_paths = [
+            '/usr/share/fonts/truetype/nanum/NanumGothic.ttf',
+            '/usr/share/fonts/nanum/NanumGothic.ttf',
+            '/Library/Fonts/AppleGothic.ttf'
+        ]
+        for p in nanum_paths:
+            if os.path.exists(p):
+                font_path = p
+                break
+        
+        if font_path:
+            font_name = fm.FontProperties(fname=font_path).get_name()
+            plt.rc('font', family=font_name)
+        else:
+            # 폰트 파일이 직접 없을 경우 가능한 이름 지정
+            for f in fm.fontManager.ttflist:
+                if 'Nanum' in f.name or 'Gothic' in f.name:
+                    plt.rc('font', family=f.name)
+                    break
+
+set_korean_font()
 sns.set_theme(style="whitegrid")
 
-# 다크 모드와 라이트 모드 모두에서 글자가 잘 보이도록 텍스트 컬러 설정
+# 텍스트 컬러 설정
 plt.rcParams['text.color'] = '#E0E0E0'
 plt.rcParams['axes.labelcolor'] = '#E0E0E0'
 plt.rcParams['xtick.color'] = '#E0E0E0'
@@ -230,7 +265,7 @@ with col_chart2:
 
 st.divider()
 
-# 8. [크기 30% 축소 적용] '의공담당'별 백업 미완료 또는 불가 현황 그래프 및 상세표
+# 8. [크기 50% 축소 적용] '의공담당'별 백업 미완료 또는 불가 현황 그래프 및 상세표
 st.subheader("👤 의공담당별 백업 미완료 또는 불가 현황")
 
 manager_col = '의공담당'
@@ -242,18 +277,21 @@ if manager_col in df_filtered.columns:
         manager_counts = pending_df[manager_col].astype(str).value_counts().reset_index()
         manager_counts.columns = ['의공담당', '미완료_건수']
         
-        # 막대그래프 크기 30% 축소 (figsize=(7, 3.5)) 및 한글 깨짐 방지 폰트 세팅 적용
-        fig_m, ax_m = plt.subplots(figsize=(7, 3.5), dpi=150)
+        # 막대그래프 크기 50% 추가 축소 (figsize=(5, 2.5)) 적용
+        fig_m, ax_m = plt.subplots(figsize=(5, 2.5), dpi=150)
         sns.barplot(data=manager_counts, x='의공담당', y='미완료_건수', ax=ax_m, palette='Oranges_r')
         
-        ax_m.set_title("의공담당별 백업 미완료/불가 장비 수량", fontsize=12, weight='bold', pad=10, color='#E0E0E0')
-        ax_m.set_xlabel("의공담당", fontsize=10, weight='bold', color='#E0E0E0')
-        ax_m.set_ylabel("미완료 수량 (대)", fontsize=10, weight='bold', color='#E0E0E0')
-        plt.xticks(rotation=45, ha='right', fontsize=9)
-        plt.yticks(fontsize=9)
+        ax_m.set_title("의공담당별 백업 미완료/불가 장비 수량", fontsize=10, weight='bold', pad=8, color='#E0E0E0')
+        ax_m.set_xlabel("의공담당", fontsize=9, weight='bold', color='#E0E0E0')
+        ax_m.set_ylabel("미완료 수량 (대)", fontsize=9, weight='bold', color='#E0E0E0')
+        plt.xticks(rotation=45, ha='right', fontsize=8)
+        plt.yticks(fontsize=8)
         
-        # 컬럼 레이아웃을 통해 그래프 크기 컴팩트하게 중앙 배치
-        col_m1, col_m2, col_m3 = st.columns([0.5, 3, 0.5])
+        # 레이아웃 여백 타이트하게 조정하여 폰트나 글자가 잘리지 않도록 함
+        plt.tight_layout()
+        
+        # 양옆 여백을 넓혀서 그래프 크기를 더 아담하게(중앙에 50% 비율로) 배치
+        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
         with col_m2:
             st.pyplot(fig_m)
         
