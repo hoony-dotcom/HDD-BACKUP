@@ -6,12 +6,19 @@ import re
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.font_manager as fm
 
-# --- [기본 폰트 및 시각화 스타일 설정 (다크/라이트 모드 대응)] ---
+# --- [기본 폰트 및 시각화 스타일 설정 (한글 폰트 깨짐 방지 및 크기 대응)] ---
+# 운영체제별 대표 한글 폰트 지정 (윈도우: 맑은 고딕, 맥/리눅스: AppleGothic 또는 NanumGothic)
 plt.rcParams['axes.unicode_minus'] = False
+if os.name == 'nt':
+    plt.rc('font', family='Malgun Gothic')
+else:
+    plt.rc('font', family='AppleGothic')
+
 sns.set_theme(style="whitegrid")
 
-# 다크 모드와 라이트 모드 모두에서 글자가 잘 보이도록 텍스트 컬러 자동 대응 설정
+# 다크 모드와 라이트 모드 모두에서 글자가 잘 보이도록 텍스트 컬러 설정
 plt.rcParams['text.color'] = '#E0E0E0'
 plt.rcParams['axes.labelcolor'] = '#E0E0E0'
 plt.rcParams['xtick.color'] = '#E0E0E0'
@@ -199,7 +206,7 @@ st.divider()
 # 7. 파이그래프 시각화 영역
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 
-fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
+fig, ax = plt.subplots(figsize=(5, 5), dpi=150)
 labels = ['Backup Completed', 'Backup Pending / N/A']
 sizes = [backup_completed_total_count, backup_minus_total_count]
 colors = ['#4CAF50', '#FF9800']
@@ -210,12 +217,12 @@ wedges, texts, autotexts = ax.pie(
     autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,} Units)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="#E0E0E0", fontsize=15)
+    textprops=dict(color="#E0E0E0", fontsize=13)
 )
 
-plt.setp(texts, size=15, weight="bold")
-plt.setp(autotexts, size=16, weight="bold")
-ax.set_title("Backup Status Ratio", fontsize=17, pad=20, weight="bold", color="#E0E0E0")
+plt.setp(texts, size=13, weight="bold")
+plt.setp(autotexts, size=14, weight="bold")
+ax.set_title("Backup Status Ratio", fontsize=15, pad=20, weight="bold", color="#E0E0E0")
 
 col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
 with col_chart2:
@@ -223,32 +230,35 @@ with col_chart2:
 
 st.divider()
 
-# 8. [신규 추가] '의공담당'별 백업 미완료 또는 불가 현황 그래프 및 상세표
+# 8. [크기 30% 축소 적용] '의공담당'별 백업 미완료 또는 불가 현황 그래프 및 상세표
 st.subheader("👤 의공담당별 백업 미완료 또는 불가 현황")
 
 manager_col = '의공담당'
 
 if manager_col in df_filtered.columns:
-    # 미완료/불가 대상 데이터 추출
     pending_df = backup_all_df[backup_all_df['세부유형'].isin(['BACKUP-'] + list(specific_backup_counts.index))].copy()
     
     if not pending_df.empty:
         manager_counts = pending_df[manager_col].astype(str).value_counts().reset_index()
         manager_counts.columns = ['의공담당', '미완료_건수']
         
-        # 막대그래프 시각화
-        fig_m, ax_m = plt.subplots(figsize=(10, 5), dpi=150)
+        # 막대그래프 크기 30% 축소 (figsize=(7, 3.5)) 및 한글 깨짐 방지 폰트 세팅 적용
+        fig_m, ax_m = plt.subplots(figsize=(7, 3.5), dpi=150)
         sns.barplot(data=manager_counts, x='의공담당', y='미완료_건수', ax=ax_m, palette='Oranges_r')
-        ax_m.set_title("의공담당별 백업 미완료/불가 장비 수량", fontsize=14, weight='bold', pad=15)
-        ax_m.set_xlabel("의공담당", fontsize=12, weight='bold')
-        ax_m.set_ylabel("미완료 수량 (대)", fontsize=12, weight='bold')
-        plt.xticks(rotation=45, ha='right', fontsize=11)
         
-        st.pyplot(fig_m)
+        ax_m.set_title("의공담당별 백업 미완료/불가 장비 수량", fontsize=12, weight='bold', pad=10, color='#E0E0E0')
+        ax_m.set_xlabel("의공담당", fontsize=10, weight='bold', color='#E0E0E0')
+        ax_m.set_ylabel("미완료 수량 (대)", fontsize=10, weight='bold', color='#E0E0E0')
+        plt.xticks(rotation=45, ha='right', fontsize=9)
+        plt.yticks(fontsize=9)
+        
+        # 컬럼 레이아웃을 통해 그래프 크기 컴팩트하게 중앙 배치
+        col_m1, col_m2, col_m3 = st.columns([0.5, 3, 0.5])
+        with col_m2:
+            st.pyplot(fig_m)
         
         st.markdown("#### 📋 의공담당별 미완료/불가 상세 목록")
         
-        # 담당자 선택 필터 또는 전체 보기
         selected_manager = st.selectbox("의공담당 선택", ["전체 담당자"] + sorted(manager_counts['의공담당'].unique().tolist()))
         
         table_view_df = pending_df.copy()
