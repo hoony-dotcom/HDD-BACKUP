@@ -223,45 +223,39 @@ with col_chart2:
 
 st.divider()
 
-# 8. [신규 추가] 의공담당자별 백업 미완료 또는 불가 현황 그래프 및 상세표
-st.subheader("👤 의공담당자별 백업 미완료 또는 불가 현황")
+# 8. [신규 추가] '의공담당'별 백업 미완료 또는 불가 현황 그래프 및 상세표
+st.subheader("👤 의공담당별 백업 미완료 또는 불가 현황")
 
-# 미완료/불가 항목만 추출 ('담당자' 또는 관련 컬럼이 있다고 가정, 보통 담당자명 컬럼명 확인 필요)
-# 데이터프레임 내 담당자 컬럼명이 '담당자' 또는 '의공담당자' 등으로 존재할 수 있으므로 안전하게 체크
-manager_col = None
-for col in df_filtered.columns:
-    if '담당자' in col:
-        manager_col = col
-        break
+manager_col = '의공담당'
 
-if manager_col:
+if manager_col in df_filtered.columns:
     # 미완료/불가 대상 데이터 추출
     pending_df = backup_all_df[backup_all_df['세부유형'].isin(['BACKUP-'] + list(specific_backup_counts.index))].copy()
     
     if not pending_df.empty:
         manager_counts = pending_df[manager_col].astype(str).value_counts().reset_index()
-        manager_counts.columns = ['담당자', '미완료_건수']
+        manager_counts.columns = ['의공담당', '미완료_건수']
         
         # 막대그래프 시각화
         fig_m, ax_m = plt.subplots(figsize=(10, 5), dpi=150)
-        sns.barplot(data=manager_counts, x='담당자', y='미완료_건수', ax=ax_m, palette='Oranges_r')
-        ax_m.set_title("의공담당자별 백업 미완료/불가 장비 수량", fontsize=14, weight='bold', pad=15)
-        ax_m.set_xlabel("의공담당자", fontsize=12, weight='bold')
+        sns.barplot(data=manager_counts, x='의공담당', y='미완료_건수', ax=ax_m, palette='Oranges_r')
+        ax_m.set_title("의공담당별 백업 미완료/불가 장비 수량", fontsize=14, weight='bold', pad=15)
+        ax_m.set_xlabel("의공담당", fontsize=12, weight='bold')
         ax_m.set_ylabel("미완료 수량 (대)", fontsize=12, weight='bold')
         plt.xticks(rotation=45, ha='right', fontsize=11)
         
         st.pyplot(fig_m)
         
-        st.markdown("#### 📋 의공담당자별 미완료/불가 상세 목록")
+        st.markdown("#### 📋 의공담당별 미완료/불가 상세 목록")
         
         # 담당자 선택 필터 또는 전체 보기
-        selected_manager = st.selectbox("의공담당자 선택", ["전체 담당자"] + sorted(manager_counts['담당자'].unique().tolist()))
+        selected_manager = st.selectbox("의공담당 선택", ["전체 담당자"] + sorted(manager_counts['의공담당'].unique().tolist()))
         
         table_view_df = pending_df.copy()
         if selected_manager != "전체 담당자":
             table_view_df = table_view_df[table_view_df[manager_col].astype(str) == selected_manager]
             
-        display_cols = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', manager_col, '모델', '일련번호', '관리대상', '취득일자'] if col in table_view_df.columns]
+        display_cols = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '모델', '일련번호', '관리대상', '취득일자'] if col in table_view_df.columns]
         
         st.dataframe(
             table_view_df[display_cols],
@@ -271,7 +265,7 @@ if manager_col:
     else:
         st.info("현재 백업 미완료 또는 불가 항목이 존재하지 않습니다.")
 else:
-    st.warning("엑셀 파일 내에 '담당자' 관련 컬럼을 찾을 수 없습니다. (컬럼명을 확인해 주세요)")
+    st.warning("엑셀 파일 내에 '의공담당' 컬럼이 존재하지 않습니다. 컬럼명을 확인해 주세요.")
 
 st.divider()
 
@@ -313,7 +307,7 @@ if category_filter != "전체보기":
 # 결과 테이블 출력
 st.subheader(f"📋 백업 대상 장비 목록 (총 {len(view_df):,}건)")
 
-display_columns = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '모델', '일련번호', '관리대상', '취득일자'] if col in view_df.columns]
+display_columns = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '모델', '일련번호', '관리대상', '취득일자'] if col in view_df.columns]
 
 st.dataframe(
     view_df[display_columns],
