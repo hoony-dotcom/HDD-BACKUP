@@ -7,7 +7,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# --- [기본 폰트 및 시각화 스타일 설정 (시인성 강화)] ---
+# --- [기본 폰트 및 시각화 스타일 설정 (시인성 및 크기 20% 강화)] ---
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_theme(style="whitegrid")
 
@@ -173,10 +173,10 @@ col_left, col_right = st.columns(2)
 with col_left:
     st.metric(label="✅ Backup 완료 (통합 합계)", value=f"{backup_completed_total_count:,} 대")
     
-    st.markdown("<p style='font-size: 0.8em; color: gray; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.95em; color: gray; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <div style="font-size: 0.9em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #4CAF50;">
+        <div style="font-size: 1.05em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #4CAF50;">
         • <b>Backup (PM):</b> {backup_pm_count:,} 대<br>
         • <b>Backup (보증):</b> {backup_warranty_count:,} 대<br>
         • <b>Backup (임대):</b> {backup_rental_count:,} 대
@@ -189,7 +189,7 @@ with col_left:
 with col_right:
     st.metric(label="⚠️ Backup 미완료 또는 불가 (세부 유형 포함)", value=f"{backup_minus_total_count:,} 대")
     
-    st.markdown("<p style='font-size: 0.8em; color: gray; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.95em; color: gray; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
     
     sub_items_html = f"• <b>기본 BACKUP-:</b> {backup_minus_base_count:,} 대<br>"
     for sub_type, count in specific_backup_counts.items():
@@ -197,7 +197,7 @@ with col_right:
         
     st.markdown(
         f"""
-        <div style="font-size: 0.9em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #FF9800;">
+        <div style="font-size: 1.05em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #FF9800;">
         {sub_items_html}
         </div>
         """,
@@ -206,7 +206,7 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역 (글씨 크기 확대 및 굵게 설정하여 시인성 극대화)
+# 7. 파이그래프 시각화 영역 (글씨 크기 약 20% 상향 및 굵게 설정)
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 
 # 해상도를 높여 선명하게 출력 (dpi=150)
@@ -221,13 +221,13 @@ wedges, texts, autotexts = ax.pie(
     autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,} Units)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="black", fontsize=12) # 폰트 크기 확대
+    textprops=dict(color="black", fontsize=15) # 기존 12 -> 15로 약 25% 상향
 )
 
 # 텍스트 선명도와 굵기 강화
-plt.setp(texts, size=12, weight="bold")
-plt.setp(autotexts, size=13, weight="bold")
-ax.set_title("Backup Status Ratio", fontsize=14, pad=20, weight="bold")
+plt.setp(texts, size=15, weight="bold")
+plt.setp(autotexts, size=16, weight="bold") # 퍼센트 및 수치 글씨 크기 확대
+ax.set_title("Backup Status Ratio", fontsize=17, pad=20, weight="bold")
 
 col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
 with col_chart2:
