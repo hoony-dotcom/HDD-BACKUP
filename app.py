@@ -6,14 +6,12 @@ import re
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.textpath import TextPath
-from matplotlib.patches import PathPatch
 
-# --- [기본 시각화 설정] ---
+# --- [기본 폰트 및 시각화 스타일 설정 (시인성 강화)] ---
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_theme(style="whitegrid")
 
-# 라이트 모드 기준 텍스트 컬러 고정
+# 라이트 모드 기준 텍스트 및 레이블 컬러 진하게 고정 (가독성 향상)
 plt.rcParams['text.color'] = '#000000'
 plt.rcParams['axes.labelcolor'] = '#000000'
 plt.rcParams['xtick.color'] = '#000000'
@@ -208,35 +206,28 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역 (한글을 Path 도형으로 변환하여 렌더링)
+# 7. 파이그래프 시각화 영역 (글씨 크기 확대 및 굵게 설정하여 시인성 극대화)
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 
-fig, ax = plt.subplots(figsize=(6, 6))
+# 해상도를 높여 선명하게 출력 (dpi=150)
+fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
+labels = ['Backup Completed', 'Backup Pending / N/A']
 sizes = [backup_completed_total_count, backup_minus_total_count]
 colors = ['#4CAF50', '#FF9800']
 
-# 파이 차트 그리기 (기본 labels는 비우고 별도로 도형 텍스트 추가)
 wedges, texts, autotexts = ax.pie(
     sizes, 
-    labels=['', ''], 
-    autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,}대)', 
+    labels=labels, 
+    autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,} Units)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="black", fontsize=11)
+    textprops=dict(color="black", fontsize=12) # 폰트 크기 확대
 )
-plt.setp(autotexts, size=11, weight="bold")
 
-# 한글 텍스트를 도형 경로(Path)로 변환하여 파이 차트 주변에 배치 (폰트 의존성 제거)
-# Backup 완료
-path_completed = TextPath((0, 0), "Backup 완료", size=14)
-patch_completed = PathPatch(path_completed, facecolor='black', edgecolor='none')
-patch_completed.set_transform(ax.transData)
-
-# 좌표 계산을 통한 라벨 배치 (필요시 위치 조정 가능)
-ax.text(-1.4, 0.8, "Backup 완료", fontsize=11, fontweight='bold', color='black')
-ax.text(0.7, 0.7, "Backup 미완료\n또는 불가", fontsize=11, fontweight='bold', color='black')
-
-ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold")
+# 텍스트 선명도와 굵기 강화
+plt.setp(texts, size=12, weight="bold")
+plt.setp(autotexts, size=13, weight="bold")
+ax.set_title("Backup Status Ratio", fontsize=14, pad=20, weight="bold")
 
 col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
 with col_chart2:
