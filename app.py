@@ -7,15 +7,15 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# --- [기본 폰트 및 시각화 스타일 설정 (시인성 및 크기 20% 강화)] ---
+# --- [기본 폰트 및 시각화 스타일 설정 (다크/라이트 모드 대응)] ---
 plt.rcParams['axes.unicode_minus'] = False
 sns.set_theme(style="whitegrid")
 
-# 라이트 모드 기준 텍스트 및 레이블 컬러 진하게 고정 (가독성 향상)
-plt.rcParams['text.color'] = '#000000'
-plt.rcParams['axes.labelcolor'] = '#000000'
-plt.rcParams['xtick.color'] = '#000000'
-plt.rcParams['ytick.color'] = '#000000'
+# 다크 모드와 라이트 모드 모두에서 글자가 잘 보이도록 텍스트 컬러 자동 대응 설정
+plt.rcParams['text.color'] = '#E0E0E0'
+plt.rcParams['axes.labelcolor'] = '#E0E0E0'
+plt.rcParams['xtick.color'] = '#E0E0E0'
+plt.rcParams['ytick.color'] = '#E0E0E0'
 
 # 페이지 설정 (사이드바 기본 열림)
 st.set_page_config(
@@ -25,16 +25,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 1. 항상 라이트 모드로 보이도록 Streamlit 테마 설정 주입 (CSS 주입)
+# 1. 다크 모드와 라이트 모드를 모두 지원하는 유연한 CSS 주입 (강제 흰 배경 제거)
 st.markdown(
     """
     <style>
+    /* Streamlit 테마 기본 컬러를 따르도록 설정하여 다크 모드 깨짐 현상 방지 */
     .stApp {
-        background-color: #FFFFFF;
-        color: #000000;
-    }
-    sidebar .stApp {
-        background-color: #F8F9FA;
+        color-scheme: light dark;
     }
     </style>
     """,
@@ -47,11 +44,11 @@ with st.sidebar:
     st.markdown(
         """
         <div style="font-size: 1.15em; font-weight: bold; margin-bottom: 10px;">
-        <a href="mailto:dhkoh@inhauh.com" target="_blank" style="text-decoration: none; color: #1E88E5;">
+        <a href="mailto:dhkoh@inhauh.com" target="_blank" style="text-decoration: none; color: #4FA8F7;">
         ✉️ dhkoh@inhauh.com
         </a>
         </div>
-        <div style="font-size: 0.9em; color: #555555;">
+        <div style="font-size: 0.9em; opacity: 0.8;">
         인하대병원 의용공학팀
         </div>
         """,
@@ -173,7 +170,7 @@ col_left, col_right = st.columns(2)
 with col_left:
     st.metric(label="✅ Backup 완료 (통합 합계)", value=f"{backup_completed_total_count:,} 대")
     
-    st.markdown("<p style='font-size: 0.95em; color: gray; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.95em; opacity: 0.7; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
     st.markdown(
         f"""
         <div style="font-size: 1.05em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #4CAF50;">
@@ -189,7 +186,7 @@ with col_left:
 with col_right:
     st.metric(label="⚠️ Backup 미완료 또는 불가 (세부 유형 포함)", value=f"{backup_minus_total_count:,} 대")
     
-    st.markdown("<p style='font-size: 0.95em; color: gray; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.95em; opacity: 0.7; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
     
     sub_items_html = f"• <b>기본 BACKUP-:</b> {backup_minus_base_count:,} 대<br>"
     for sub_type, count in specific_backup_counts.items():
@@ -206,7 +203,7 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역 (글씨 크기 약 20% 상향 및 굵게 설정)
+# 7. 파이그래프 시각화 영역 (다크모드에서도 잘 보이도록 텍스트 색상 최적화)
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 
 # 해상도를 높여 선명하게 출력 (dpi=150)
@@ -221,13 +218,13 @@ wedges, texts, autotexts = ax.pie(
     autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,} Units)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="black", fontsize=15) # 기존 12 -> 15로 약 25% 상향
+    textprops=dict(color="#E0E0E0", fontsize=15) # 다크/라이트 공용 밝은 톤 적용
 )
 
 # 텍스트 선명도와 굵기 강화
 plt.setp(texts, size=15, weight="bold")
-plt.setp(autotexts, size=16, weight="bold") # 퍼센트 및 수치 글씨 크기 확대
-ax.set_title("Backup Status Ratio", fontsize=17, pad=20, weight="bold")
+plt.setp(autotexts, size=16, weight="bold")
+ax.set_title("Backup Status Ratio", fontsize=17, pad=20, weight="bold", color="#E0E0E0")
 
 col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
 with col_chart2:
