@@ -8,17 +8,19 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
 # --- [그래프 한글 깨짐 방지 핵심 설정] ---
-# 1. 폰트 매니저 강제 리프레시 및 나눔고딕 지정
-plt.rcParams['font.family'] = 'NanumGothic'
 plt.rcParams['axes.unicode_minus'] = False # 마이너스 기호 깨짐 방지
 
-# 시스템에 설치된 한글 폰트를 탐색하여 적용
-found_font = False
-for font in fm.fontManager.ttflist:
-    if any(name in font.name for name in ['NanumGothic', 'Nanum Gothic', 'Malgun Gothic', 'AppleGothic', 'DejaVu Sans']):
-        plt.rcParams['font.family'] = font.name
-        found_font = True
+# 사용 가능한 한글 폰트 탐색 및 강제 적용
+font_list = [f.name for f in fm.fontManager.ttflist]
+target_fonts = ['NanumGothic', 'Nanum Gothic', 'Malgun Gothic', 'AppleGothic', 'DejaVu Sans']
+
+applied_font = 'DejaVu Sans'
+for tf in target_fonts:
+    if tf in font_list:
+        applied_font = tf
         break
+
+plt.rcParams['font.family'] = applied_font
 
 # 페이지 설정 (사이드바 기본 열림)
 st.set_page_config(
@@ -44,7 +46,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 2. 사이드바 구성 (제작 및 문의 이메일을 최상단으로 이동 및 크기 확대, 개발 앱 링크 추가)
+# 2. 사이드바 구성 (제작 및 문의 이메일 링크 최상단 배치 및 1번 링크 수정 반영)
 with st.sidebar:
     st.markdown("### 📧 제작 및 문의")
     st.markdown(
@@ -64,7 +66,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("#### 🛠️ 개발 앱 목록")
     st.markdown("""
-    1. [의료장비 투자집행 계획 실적](https://buly.kr/DEbdwF)
+    1. [의료장비 투자집행 계획 실적](https://buly.kr/DEbvdwF)
     2. [인하대병원 의료장비 보유 현황](https://buly.kr/7mERs3u)
     3. [건강보험심사평가원 의료장비 상세현황 조회](http://buly.kr/uWvRbg)
     4. [인하대병원 의료장비 조회 시스템](https://buly.kr/6BzfJgY)
@@ -209,7 +211,7 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역 (한글 폰트 적용 강제)
+# 7. 파이그래프 시각화 영역
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 
 fig, ax = plt.subplots(figsize=(6, 6))
@@ -223,11 +225,10 @@ wedges, texts, autotexts = ax.pie(
     autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,}대)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="black", fontsize=11, family=plt.rcParams['font.family'])
+    textprops=dict(color="black", fontsize=11)
 )
-plt.setp(texts, family=plt.rcParams['font.family'])
-plt.setp(autotexts, size=11, weight="bold", family=plt.rcParams['font.family'])
-ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold", fontname=plt.rcParams['font.family'])
+plt.setp(autotexts, size=11, weight="bold")
+ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold")
 
 col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
 with col_chart2:
