@@ -4,15 +4,65 @@ import glob
 import os
 import re
 from datetime import datetime
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
-# 페이지 설정
+# 한글 폰트 설정 (시스템 환경에 맞게 자동 지정 시도)
+for font in fm.fontManager.ttflist:
+    if 'Malgun' in font.name or 'Nanum' in font.name or 'AppleGothic' in font.name:
+        plt.rcParams['font.family'] = font.name
+        break
+
+# 페이지 설정 (사이드바 기본 열림)
 st.set_page_config(
     page_title="의료기기 백업 현황 대시보드",
     page_icon="🏥",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# 1. 최신 엑셀 파일 자동 탐색 및 기준일 파싱 함수
+# 1. 항상 라이트 모드로 보이도록 Streamlit 테마 설정 주입 (CSS 주입)
+st.markdown(
+    """
+    <style>
+    /* 라이트 모드 고정 스타일 강제 적용 */
+    .stApp {
+        background-color: #FFFFFF;
+        color: #000000;
+    }
+    sidebar .stApp {
+        background-color: #F8F9FA;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 2. 사이드바 구성 (제작/문의 및 개발 앱 목록)
+with st.sidebar:
+    st.markdown("### 🏥 인하대병원 의용공학팀")
+    st.markdown("---")
+    
+    st.markdown("#### 🛠️ 개발 앱 목록")
+    # 링크는 추후 필요에 따라 마크다운 링크([앱 이름](URL)) 형태로 수정하실 수 있습니다.
+    st.markdown("""
+    1. 의료장비 투자집행 계획 실적
+    2. 인하대병원 의료장비 보유 현황
+    3. 건강보험심사평가원 의료장비 상세현황 조회
+    4. 인하대병원 의료장비 조회 시스템
+    5. **[현재] 의료기기 백업 현황 대시보드**
+    """)
+    
+    st.markdown("---")
+    st.markdown("#### 📧 제작 및 문의")
+    st.markdown(
+        """
+        **인하대병원 의용공학팀**  
+        ✉️ `dhkoh@inhauh.com`
+        """
+    )
+
+# 3. 최신 엑셀 파일 자동 탐색 및 기준일 파싱 함수
 @st.cache_data(ttl=60)
 def load_latest_data():
     files = glob.glob('의료기기 현황조회_*.xlsx')
@@ -41,10 +91,12 @@ if df is None:
     st.error("참고할 '의료기기 현황조회_*.xlsx' 파일이 존재하지 않습니다. 파일을 업로드해 주세요.")
     st.stop()
 
-# 2. 전처리: 사용부서가 '88'인 항목 제외
+# 4. 전처리: 사용부서가 '88'인 항목 제외 및 취득일자가 공란인 항목 제외
 df_filtered = df[df['사용 부서'].astype(str).str.strip() != '88'].copy()
+if '취득일자' in df_filtered.columns:
+    df_filtered = df_filtered[df_filtered['취득일자'].notna()].copy()
 
-# 3. 대시보드 지표 계산
+# 5. 대시보드 지표 계산
 total_equipment_count = len(df_filtered) # 전체 장비수량(대)
 
 # Backup 전체 대상
@@ -85,16 +137,16 @@ backup_rental_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup
 # Backup 완료 통합 합계 (완료 + PM + 보증 + 임대)
 backup_completed_total_count = base_completed_count + backup_pm_count + backup_warranty_count + backup_rental_count
 
-# 기타 괄호형 세부유형 집계 (USB license, WIN7, 불가 등)
+# 기타 괄호형 세부유형 집계
 excluded_types = ['Backup 완료 (+)', 'BACKUP-', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)', '기타']
 specific_backup_counts = backup_all_df[~backup_all_df['세부유형'].isin(excluded_types)].groupby('세부유형').size()
 
-# Backup 미완료 또는 불가 (기본 BACKUP- + 세부 유형들 합산)
+# Backup 미완료 또는 불가
 backup_minus_base_count = len(backup_all_df[backup_all_df['세부유형'] == 'BACKUP-'])
 backup_minus_total_count = backup_minus_base_count + specific_backup_counts.sum()
 
-# --- 화면 UI 구성 ---
-st.title("🏥 의료기기 백업(Backup) 현황 조회 대시보드")
+# --- 화면 메인 UI 구성 ---
+st.title("의료기기 백업 현황 대시보드")
 
 # 참고 파일 및 기준일 안내 박스
 st.info(f"📁 **참고 파일명:** `{filename}` &nbsp;&nbsp;|&nbsp;&nbsp; 📅 **기준일:** `{기준일}`")
@@ -108,17 +160,17 @@ with top_col2:
 
 st.divider()
 
-# 4. 2열 메인 배치 (Backup 완료 vs Backup 미완료 또는 불가)
+# 6. 2열 메인 배치 (Backup 완료 vs Backup 미완료 또는 불가)
 col_left, col_right = st.columns(2)
 
 # --- [왼쪽 컬럼] Backup 완료 ---
 with col_left:
     st.metric(label="✅ Backup 완료 (통합 합계)", value=f"{backup_completed_total_count:,} 대")
     
-    st.markdown("<p style='font-size: 0.7em; color: gray; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.8em; color: gray; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <div style="font-size: 0.85em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #4CAF50;">
+        <div style="font-size: 0.9em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #4CAF50;">
         • <b>Backup (PM):</b> {backup_pm_count:,} 대<br>
         • <b>Backup (보증):</b> {backup_warranty_count:,} 대<br>
         • <b>Backup (임대):</b> {backup_rental_count:,} 대
@@ -131,7 +183,7 @@ with col_left:
 with col_right:
     st.metric(label="⚠️ Backup 미완료 또는 불가 (세부 유형 포함)", value=f"{backup_minus_total_count:,} 대")
     
-    st.markdown("<p style='font-size: 0.7em; color: gray; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 0.8em; color: gray; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
     
     sub_items_html = f"• <b>기본 BACKUP-:</b> {backup_minus_base_count:,} 대<br>"
     for sub_type, count in specific_backup_counts.items():
@@ -139,7 +191,7 @@ with col_right:
         
     st.markdown(
         f"""
-        <div style="font-size: 0.85em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #FF9800;">
+        <div style="font-size: 0.9em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #FF9800;">
         {sub_items_html}
         </div>
         """,
@@ -148,7 +200,31 @@ with col_right:
 
 st.divider()
 
-# 5. 검색 및 필터 영역
+# 7. 파이그래프 시각화 영역
+st.subheader("📈 백업 완료 vs 미완료 현황 비율")
+fig, ax = plt.subplots(figsize=(6, 6))
+labels = ['Backup 완료', 'Backup 미완료 또는 불가']
+sizes = [backup_completed_total_count, backup_minus_total_count]
+colors = ['#4CAF50', '#FF9800']
+
+wedges, texts, autotexts = ax.pie(
+    sizes, 
+    labels=labels, 
+    autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,}대)', 
+    startangle=90, 
+    colors=colors,
+    textprops=dict(color="black", fontsize=11)
+)
+plt.setp(autotexts, size=11, weight="bold")
+ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold")
+
+col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
+with col_chart2:
+    st.pyplot(fig)
+
+st.divider()
+
+# 8. 검색 및 필터 영역
 st.subheader("🔍 검색 및 필터")
 filter_col1, filter_col2, filter_col3 = st.columns(3)
 
@@ -183,7 +259,7 @@ if category_filter != "전체보기":
     else:
         view_df = view_df[view_df['세부유형'] == category_filter]
 
-# 6. 결과 테이블 출력
+# 9. 결과 테이블 출력
 st.subheader(f"📋 백업 대상 장비 목록 (총 {len(view_df):,}건)")
 
 display_columns = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '모델', '일련번호', '관리대상', '취득일자'] if col in view_df.columns]
