@@ -60,7 +60,7 @@ backup_pm_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).st
 backup_warranty_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'보증', na=False, case=False)])
 backup_rental_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'임대', na=False, case=False)])
 
-# [추가] Backup-(*) 형태 또는 기타 상세 세부 패턴 추출 및 카운트
+# [추가] BACKUP- 관련 항목 카운트 (완료, PM, 보증, 임대가 아니면서 BACKUP-이 포함된 항목)
 def classify_backup(val):
     val_str = str(val)
     if re.search(r'\+', val_str):
@@ -72,16 +72,22 @@ def classify_backup(val):
     if '임대' in val_str:
         return 'Backup (임대)'
     
-    # BACKUP-(*) 패턴 추출
-    match = re.search(r'(BACKUP\s*-\s*\([^)]+\))', val_str, re.IGNORECASE)
-    if match:
-        return match.group(1).upper()
-    return '기타 Backup(-)'
+    # BACKUP- 포함 항목 (기본 백업 및 괄호형 세부 항목)
+    if re.search(r'BACKUP-', val_str, re.IGNORECASE):
+        match = re.search(r'(BACKUP\s*-\s*\([^)]+\))', val_str, re.IGNORECASE)
+        if match:
+            return match.group(1).upper()
+        return 'BACKUP-'
+        
+    return '기타'
 
 backup_all_df['세부유형'] = backup_all_df['관리대상'].apply(classify_backup)
 
-# 괄호형 세부유형 집계 (예: BACKUP-(USB license), BACKUP-(WIN7) 등)
-specific_backup_counts = backup_all_df[~backup_all_df['세부유형'].isin(['Backup 완료 (+)', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)', '기타 Backup(-)'])].groupby('세부유형').size()
+# BACKUP- 단독 항목 집계 (정확히 BACKUP- 이 포함되거나 시작하는 기본형)
+backup_minus_count = len(backup_all_df[backup_all_df['세부유형'] == 'BACKUP-'])
+
+# 기타 괄호형 세부유형 집계 (예: BACKUP-(USB license), BACKUP-(WIN7) 등)
+specific_backup_counts = backup_all_df[~backup_all_df['세부유형'].isin(['Backup 완료 (+)', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)', 'BACKUP-', '기타'])].groupby('세부유형').size()
 
 # --- 화면 UI 구성 ---
 st.title("🏥 의료기기 백업(Backup) 현황 조회 대시보드")
@@ -89,7 +95,7 @@ st.title("🏥 의료기기 백업(Backup) 현황 조회 대시보드")
 # 참고 파일 및 기준일 안내 박스
 st.info(f"📁 **참고 파일명:** `{filename}` &nbsp;&nbsp;|&nbsp;&nbsp; 📅 **기준일:** `{기준일}`")
 
-# 4. 요약 대시보드 카드 (1단: 전체 요약)
+# 4. 요약 대시보드 카드 (1단: 전체 및 주요 지표)
 st.subheader("📊 전체 백업 현황 요약")
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -99,18 +105,20 @@ with col2:
 with col3:
     st.metric(label="Backup 완료 (+)", value=f"{backup_completed_count:,} 대")
 
-# 요약 대시보드 카드 (2단: 주요 구분 지표)
-col4, col5, col6 = st.columns(3)
+# 요약 대시보드 카드 (2단: 구분 지표 및 BACKUP-)
+col4, col5, col6, col7 = st.columns(4)
 with col4:
-    st.metric(label="Backup (PM)", value=f"{backup_pm_count:,} 대")
+    st.metric(label="BACKUP-", value=f"{backup_minus_count:,} 대")
 with col5:
-    st.metric(label="Backup (보증)", value=f"{backup_warranty_count:,} 대")
+    st.metric(label="Backup (PM)", value=f"{backup_pm_count:,} 대")
 with col6:
+    st.metric(label="Backup (보증)", value=f"{backup_warranty_count:,} 대")
+with col7:
     st.metric(label="Backup (임대)", value=f"{backup_rental_count:,} 대")
 
-# 요약 대시보드 카드 (3단: Backup-(*) 개별 세부 항목 동적 표시)
+# 요약 대시보드 카드 (3단: 기타 Backup-(*) 개별 세부 항목 동적 표시)
 if not specific_backup_counts.empty:
-    st.subheader("📌 Backup-(*) 세부 유형별 현황")
+    st.subheader("📌 기타 Backup-(*) 세부 유형별 현황")
     sub_cols = st.columns(len(specific_backup_counts) if len(specific_backup_counts) <= 4 else 4)
     for idx, (sub_type, count) in enumerate(specific_backup_counts.items()):
         with sub_cols[idx % len(sub_cols)]:
@@ -130,8 +138,7 @@ with filter_col2:
     selected_dept = st.selectbox("사용부서 선택", ["전체 부서"] + departments)
 
 with filter_col3:
-    # 필터 드롭다운에 기본 유형 + 발견된 BACKUP-(*) 세부 유형들 동적 추가
-    filter_options = ["전체보기", "Backup 완료 (+)", "Backup (PM)", "Backup (보증)", "Backup (임대)"] + list(specific_backup_counts.index) + ["기타 Backup(-)"]
+    filter_options = ["전체보기", "Backup 완료 (+)", "BACKUP-", "Backup (PM)", "Backup (보증)", "Backup (임대)"] + list(specific_backup_counts.index)
     category_filter = st.selectbox("백업 세부 유형 필터", filter_options)
 
 # 필터 적용 로직
