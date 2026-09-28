@@ -7,14 +7,17 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-# matplotlib 한글 폰트 설정 (리눅스 시스템 나눔고딕 또는 기본 폰트 강제 지정)
+# --- [그래프 한글 깨짐 방지 핵심 설정] ---
+# 1. 폰트 매니저 강제 리프레시 및 나눔고딕 지정
 plt.rcParams['font.family'] = 'NanumGothic'
 plt.rcParams['axes.unicode_minus'] = False # 마이너스 기호 깨짐 방지
 
-# 혹시 나눔고딕이 없을 경우를 대비한 대체 폰트 탐색 로직
+# 시스템에 설치된 한글 폰트를 탐색하여 적용
+found_font = False
 for font in fm.fontManager.ttflist:
-    if 'NanumGothic' in font.name or 'Malgun Gothic' in font.name or 'AppleGothic' in font.name:
+    if any(name in font.name for name in ['NanumGothic', 'Nanum Gothic', 'Malgun Gothic', 'AppleGothic', 'DejaVu Sans']):
         plt.rcParams['font.family'] = font.name
+        found_font = True
         break
 
 # 페이지 설정 (사이드바 기본 열림)
@@ -41,28 +44,32 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 2. 사이드바 구성 (제작/문의 및 개발 앱 목록)
+# 2. 사이드바 구성 (제작 및 문의 이메일을 최상단으로 이동 및 크기 확대, 개발 앱 링크 추가)
 with st.sidebar:
-    st.markdown("### 🏥 인하대병원 의용공학팀")
-    st.markdown("---")
-    
-    st.markdown("#### 🛠️ 개발 앱 목록")
-    st.markdown("""
-    1. 의료장비 투자집행 계획 실적
-    2. 인하대병원 의료장비 보유 현황
-    3. 건강보험심사평가원 의료장비 상세현황 조회
-    4. 인하대병원 의료장비 조회 시스템
-    5. **[현재] 의료기기 백업 현황 대시보드**
-    """)
-    
-    st.markdown("---")
-    st.markdown("#### 📧 제작 및 문의")
+    st.markdown("### 📧 제작 및 문의")
     st.markdown(
         """
-        **인하대병원 의용공학팀**  
-        ✉️ `dhkoh@inhauh.com`
-        """
+        <div style="font-size: 1.15em; font-weight: bold; margin-bottom: 10px;">
+        <a href="mailto:dhkoh@inhauh.com" target="_blank" style="text-decoration: none; color: #1E88E5;">
+        ✉️ dhkoh@inhauh.com
+        </a>
+        </div>
+        <div style="font-size: 0.9em; color: #555555;">
+        인하대병원 의용공학팀
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+    
+    st.markdown("---")
+    st.markdown("#### 🛠️ 개발 앱 목록")
+    st.markdown("""
+    1. [의료장비 투자집행 계획 실적](https://buly.kr/DEbdwF)
+    2. [인하대병원 의료장비 보유 현황](https://buly.kr/7mERs3u)
+    3. [건강보험심사평가원 의료장비 상세현황 조회](http://buly.kr/uWvRbg)
+    4. [인하대병원 의료장비 조회 시스템](https://buly.kr/6BzfJgY)
+    5. **[현재] [의료기기 백업 현황 대시보드](https://buly.kr/2Jr1qXA)**
+    """)
 
 # 3. 최신 엑셀 파일 자동 탐색 및 기준일 파싱 함수
 @st.cache_data(ttl=60)
@@ -202,8 +209,9 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역 (한글 폰트 적용 확인)
+# 7. 파이그래프 시각화 영역 (한글 폰트 적용 강제)
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
+
 fig, ax = plt.subplots(figsize=(6, 6))
 labels = ['Backup 완료', 'Backup 미완료 또는 불가']
 sizes = [backup_completed_total_count, backup_minus_total_count]
@@ -215,10 +223,11 @@ wedges, texts, autotexts = ax.pie(
     autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,}대)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="black", fontsize=11)
+    textprops=dict(color="black", fontsize=11, family=plt.rcParams['font.family'])
 )
-plt.setp(autotexts, size=11, weight="bold")
-ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold")
+plt.setp(texts, family=plt.rcParams['font.family'])
+plt.setp(autotexts, size=11, weight="bold", family=plt.rcParams['font.family'])
+ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold", fontname=plt.rcParams['font.family'])
 
 col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
 with col_chart2:
