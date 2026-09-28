@@ -7,9 +7,13 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-# 한글 폰트 설정 (시스템 환경에 맞게 자동 지정 시도)
+# matplotlib 한글 폰트 설정 (리눅스 시스템 나눔고딕 또는 기본 폰트 강제 지정)
+plt.rcParams['font.family'] = 'NanumGothic'
+plt.rcParams['axes.unicode_minus'] = False # 마이너스 기호 깨짐 방지
+
+# 혹시 나눔고딕이 없을 경우를 대비한 대체 폰트 탐색 로직
 for font in fm.fontManager.ttflist:
-    if 'Malgun' in font.name or 'Nanum' in font.name or 'AppleGothic' in font.name:
+    if 'NanumGothic' in font.name or 'Malgun Gothic' in font.name or 'AppleGothic' in font.name:
         plt.rcParams['font.family'] = font.name
         break
 
@@ -25,7 +29,6 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* 라이트 모드 고정 스타일 강제 적용 */
     .stApp {
         background-color: #FFFFFF;
         color: #000000;
@@ -44,7 +47,6 @@ with st.sidebar:
     st.markdown("---")
     
     st.markdown("#### 🛠️ 개발 앱 목록")
-    # 링크는 추후 필요에 따라 마크다운 링크([앱 이름](URL)) 형태로 수정하실 수 있습니다.
     st.markdown("""
     1. 의료장비 투자집행 계획 실적
     2. 인하대병원 의료장비 보유 현황
@@ -200,7 +202,7 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역
+# 7. 파이그래프 시각화 영역 (한글 폰트 적용 확인)
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 fig, ax = plt.subplots(figsize=(6, 6))
 labels = ['Backup 완료', 'Backup 미완료 또는 불가']
