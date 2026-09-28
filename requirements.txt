@@ -7,3 +7,4 @@ streamlit-authenticator
 opencv-python-headless
 pyzbar
 numpy
+matplotlib
