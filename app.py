@@ -25,11 +25,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 1. 다크 모드와 라이트 모드를 모두 지원하는 유연한 CSS 주입 (강제 흰 배경 제거)
+# 1. 다크 모드와 라이트 모드를 모두 지원하는 유연한 CSS 주입
 st.markdown(
     """
     <style>
-    /* Streamlit 테마 기본 컬러를 따르도록 설정하여 다크 모드 깨짐 현상 방지 */
     .stApp {
         color-scheme: light dark;
     }
@@ -38,7 +37,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 2. 사이드바 구성 (제작 및 문의 이메일 링크 및 1번 링크 수정 반영)
+# 2. 사이드바 구성 (제작 및 문의 이메일 링크 및 개발 앱 목록)
 with st.sidebar:
     st.markdown("### 📧 제작 및 문의")
     st.markdown(
@@ -166,10 +165,8 @@ st.divider()
 # 6. 2열 메인 배치 (Backup 완료 vs Backup 미완료 또는 불가)
 col_left, col_right = st.columns(2)
 
-# --- [왼쪽 컬럼] Backup 완료 ---
 with col_left:
     st.metric(label="✅ Backup 완료 (통합 합계)", value=f"{backup_completed_total_count:,} 대")
-    
     st.markdown("<p style='font-size: 0.95em; opacity: 0.7; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
     st.markdown(
         f"""
@@ -182,16 +179,12 @@ with col_left:
         unsafe_allow_html=True
     )
 
-# --- [오른쪽 컬럼] Backup 미완료 또는 불가 ---
 with col_right:
     st.metric(label="⚠️ Backup 미완료 또는 불가 (세부 유형 포함)", value=f"{backup_minus_total_count:,} 대")
-    
     st.markdown("<p style='font-size: 0.95em; opacity: 0.7; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
-    
     sub_items_html = f"• <b>기본 BACKUP-:</b> {backup_minus_base_count:,} 대<br>"
     for sub_type, count in specific_backup_counts.items():
         sub_items_html += f"• <b>{sub_type}:</b> {count:,} 대<br>"
-        
     st.markdown(
         f"""
         <div style="font-size: 1.05em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #FF9800;">
@@ -203,10 +196,9 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역 (다크모드에서도 잘 보이도록 텍스트 색상 최적화)
+# 7. 파이그래프 시각화 영역
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 
-# 해상도를 높여 선명하게 출력 (dpi=150)
 fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
 labels = ['Backup Completed', 'Backup Pending / N/A']
 sizes = [backup_completed_total_count, backup_minus_total_count]
@@ -218,10 +210,9 @@ wedges, texts, autotexts = ax.pie(
     autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,} Units)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="#E0E0E0", fontsize=15) # 다크/라이트 공용 밝은 톤 적용
+    textprops=dict(color="#E0E0E0", fontsize=15)
 )
 
-# 텍스트 선명도와 굵기 강화
 plt.setp(texts, size=15, weight="bold")
 plt.setp(autotexts, size=16, weight="bold")
 ax.set_title("Backup Status Ratio", fontsize=17, pad=20, weight="bold", color="#E0E0E0")
@@ -232,8 +223,60 @@ with col_chart2:
 
 st.divider()
 
-# 8. 검색 및 필터 영역
-st.subheader("🔍 검색 및 필터")
+# 8. [신규 추가] 의공담당자별 백업 미완료 또는 불가 현황 그래프 및 상세표
+st.subheader("👤 의공담당자별 백업 미완료 또는 불가 현황")
+
+# 미완료/불가 항목만 추출 ('담당자' 또는 관련 컬럼이 있다고 가정, 보통 담당자명 컬럼명 확인 필요)
+# 데이터프레임 내 담당자 컬럼명이 '담당자' 또는 '의공담당자' 등으로 존재할 수 있으므로 안전하게 체크
+manager_col = None
+for col in df_filtered.columns:
+    if '담당자' in col:
+        manager_col = col
+        break
+
+if manager_col:
+    # 미완료/불가 대상 데이터 추출
+    pending_df = backup_all_df[backup_all_df['세부유형'].isin(['BACKUP-'] + list(specific_backup_counts.index))].copy()
+    
+    if not pending_df.empty:
+        manager_counts = pending_df[manager_col].astype(str).value_counts().reset_index()
+        manager_counts.columns = ['담당자', '미완료_건수']
+        
+        # 막대그래프 시각화
+        fig_m, ax_m = plt.subplots(figsize=(10, 5), dpi=150)
+        sns.barplot(data=manager_counts, x='담당자', y='미완료_건수', ax=ax_m, palette='Oranges_r')
+        ax_m.set_title("의공담당자별 백업 미완료/불가 장비 수량", fontsize=14, weight='bold', pad=15)
+        ax_m.set_xlabel("의공담당자", fontsize=12, weight='bold')
+        ax_m.set_ylabel("미완료 수량 (대)", fontsize=12, weight='bold')
+        plt.xticks(rotation=45, ha='right', fontsize=11)
+        
+        st.pyplot(fig_m)
+        
+        st.markdown("#### 📋 의공담당자별 미완료/불가 상세 목록")
+        
+        # 담당자 선택 필터 또는 전체 보기
+        selected_manager = st.selectbox("의공담당자 선택", ["전체 담당자"] + sorted(manager_counts['담당자'].unique().tolist()))
+        
+        table_view_df = pending_df.copy()
+        if selected_manager != "전체 담당자":
+            table_view_df = table_view_df[table_view_df[manager_col].astype(str) == selected_manager]
+            
+        display_cols = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', manager_col, '모델', '일련번호', '관리대상', '취득일자'] if col in table_view_df.columns]
+        
+        st.dataframe(
+            table_view_df[display_cols],
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("현재 백업 미완료 또는 불가 항목이 존재하지 않습니다.")
+else:
+    st.warning("엑셀 파일 내에 '담당자' 관련 컬럼을 찾을 수 없습니다. (컬럼명을 확인해 주세요)")
+
+st.divider()
+
+# 9. 일반 검색 및 전체 필터 영역
+st.subheader("🔍 전체 장비 검색 및 필터")
 filter_col1, filter_col2, filter_col3 = st.columns(3)
 
 with filter_col1:
@@ -267,7 +310,7 @@ if category_filter != "전체보기":
     else:
         view_df = view_df[view_df['세부유형'] == category_filter]
 
-# 9. 결과 테이블 출력
+# 결과 테이블 출력
 st.subheader(f"📋 백업 대상 장비 목록 (총 {len(view_df):,}건)")
 
 display_columns = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '모델', '일련번호', '관리대상', '취득일자'] if col in view_df.columns]
