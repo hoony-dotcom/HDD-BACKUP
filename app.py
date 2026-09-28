@@ -82,14 +82,14 @@ backup_pm_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup (PM
 backup_warranty_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup (보증)'])
 backup_rental_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup (임대)'])
 
-# [요청 반영] Backup 완료(+)에 PM, 보증, 임대 포함해서 합계 산출
+# Backup 완료 통합 합계 (완료 + PM + 보증 + 임대)
 backup_completed_total_count = base_completed_count + backup_pm_count + backup_warranty_count + backup_rental_count
 
-# 기타 괄호형 세부유형 집계 (USB license, WIN7 등)
+# 기타 괄호형 세부유형 집계 (USB license, WIN7, 불가 등)
 excluded_types = ['Backup 완료 (+)', 'BACKUP-', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)', '기타']
 specific_backup_counts = backup_all_df[~backup_all_df['세부유형'].isin(excluded_types)].groupby('세부유형').size()
 
-# BACKUP- 기본형 + 세부 유형들 합산
+# Backup 미완료 또는 불가 (기본 BACKUP- + 세부 유형들 합산)
 backup_minus_base_count = len(backup_all_df[backup_all_df['세부유형'] == 'BACKUP-'])
 backup_minus_total_count = backup_minus_base_count + specific_backup_counts.sum()
 
@@ -99,37 +99,52 @@ st.title("🏥 의료기기 백업(Backup) 현황 조회 대시보드")
 # 참고 파일 및 기준일 안내 박스
 st.info(f"📁 **참고 파일명:** `{filename}` &nbsp;&nbsp;|&nbsp;&nbsp; 📅 **기준일:** `{기준일}`")
 
-# 4. 요약 대시보드 카드 (1단: 전체 및 Backup 완료(+) 통합 합계)
-st.subheader("📊 전체 백업 현황 요약")
-col1, col2, col3 = st.columns(3)
-with col1:
+# 전체 장비 및 대상 수량
+top_col1, top_col2 = st.columns(2)
+with top_col1:
     st.metric(label="전체 장비수량", value=f"{total_equipment_count:,} 대")
-with col2:
+with top_col2:
     st.metric(label="Backup 대상장비수량", value=f"{backup_target_count:,} 대")
-with col3:
-    st.metric(label="Backup 완료 (+) (PM/보증/임대 포함)", value=f"{backup_completed_total_count:,} 대")
 
-# 요약 대시보드 카드 (2단: BACKUP- 세부 유형 포함)
-col4, _ = st.columns([1, 2])
-with col4:
-    st.metric(label="BACKUP- (세부 유형 포함)", value=f"{backup_minus_total_count:,} 대")
+st.divider()
 
-# 요약 대시보드 카드 (3단: PM, 보증, 임대 및 기타 Backup-(*) 세부 항목 개별 카드 표시)
-st.subheader("📌 세부 유형별 현황 (PM / 보증 / 임대 / 기타)")
+# 4. 2열 메인 배치 (Backup 완료 vs Backup 미완료 또는 불가)
+col_left, col_right = st.columns(2)
 
-# PM, 보증, 임대 + 기타 세부 유형들을 합쳐서 카드 목록 구성
-card_items = {
-    "Backup (PM)": backup_pm_count,
-    "Backup (보증)": backup_warranty_count,
-    "Backup (임대)": backup_rental_count
-}
-for k, v in specific_backup_counts.items():
-    card_items[k] = v
+# --- [왼쪽 컬럼] Backup 완료 ---
+with col_left:
+    st.metric(label="✅ Backup 완료 (통합 합계)", value=f"{backup_completed_total_count:,} 대")
+    
+    st.markdown("<p style='font-size: 0.7em; color: gray; margin-bottom: 5px;'>세부 항목 (PM / 보증 / 임대)</p>", unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style="font-size: 0.85em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #4CAF50;">
+        • <b>Backup (PM):</b> {backup_pm_count:,} 대<br>
+        • <b>Backup (보증):</b> {backup_warranty_count:,} 대<br>
+        • <b>Backup (임대):</b> {backup_rental_count:,} 대
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-sub_cols = st.columns(4)
-for idx, (sub_type, count) in enumerate(card_items.items()):
-    with sub_cols[idx % 4]:
-        st.metric(label=sub_type, value=f"{count:,} 대")
+# --- [오른쪽 컬럼] Backup 미완료 또는 불가 ---
+with col_right:
+    st.metric(label="⚠️ Backup 미완료 또는 불가 (세부 유형 포함)", value=f"{backup_minus_total_count:,} 대")
+    
+    st.markdown("<p style='font-size: 0.7em; color: gray; margin-bottom: 5px;'>나머지 세부 항목</p>", unsafe_allow_html=True)
+    
+    sub_items_html = f"• <b>기본 BACKUP-:</b> {backup_minus_base_count:,} 대<br>"
+    for sub_type, count in specific_backup_counts.items():
+        sub_items_html += f"• <b>{sub_type}:</b> {count:,} 대<br>"
+        
+    st.markdown(
+        f"""
+        <div style="font-size: 0.85em; line-height: 1.6; padding-left: 10px; border-left: 3px solid #FF9800;">
+        {sub_items_html}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 st.divider()
 
@@ -145,7 +160,7 @@ with filter_col2:
     selected_dept = st.selectbox("사용부서 선택", ["전체 부서"] + departments)
 
 with filter_col3:
-    filter_options = ["전체보기", "Backup 완료 (+) (통합)", "BACKUP- (세부 유형 포함)", "Backup (PM)", "Backup (보증)", "Backup (임대)"] + list(specific_backup_counts.index)
+    filter_options = ["전체보기", "Backup 완료 (통합)", "Backup 미완료 또는 불가 (세부 유형 포함)", "Backup (PM)", "Backup (보증)", "Backup (임대)"] + list(specific_backup_counts.index)
     category_filter = st.selectbox("백업 세부 유형 필터", filter_options)
 
 # 필터 적용 로직
@@ -161,9 +176,9 @@ if selected_dept != "전체 부서":
     view_df = view_df[view_df['사용 부서'].astype(str) == selected_dept]
 
 if category_filter != "전체보기":
-    if category_filter == "Backup 완료 (+) (통합)":
+    if category_filter == "Backup 완료 (통합)":
         view_df = view_df[view_df['세부유형'].isin(['Backup 완료 (+)', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)'])]
-    elif category_filter == "BACKUP- (세부 유형 포함)":
+    elif category_filter == "Backup 미완료 또는 불가 (세부 유형 포함)":
         view_df = view_df[view_df['세부유형'].isin(['BACKUP-'] + list(specific_backup_counts.index))]
     else:
         view_df = view_df[view_df['세부유형'] == category_filter]
