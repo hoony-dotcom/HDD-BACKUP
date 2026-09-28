@@ -7,20 +7,19 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-# --- [그래프 한글 깨짐 방지 핵심 설정] ---
+# --- [그래프 한글 깨짐 방지 강제 설정] ---
+# 1. 폰트 캐시 파일 강제 삭제 및 재구축
+fm._load_fontmanager(try_read_cache=False)
+
+# 2. 나눔고딕 또는 시스템 기본 한글 폰트 명시적 적용
+plt.rcParams['font.family'] = 'NanumGothic'
 plt.rcParams['axes.unicode_minus'] = False # 마이너스 기호 깨짐 방지
 
-# 사용 가능한 한글 폰트 탐색 및 강제 적용
-font_list = [f.name for f in fm.fontManager.ttflist]
-target_fonts = ['NanumGothic', 'Nanum Gothic', 'Malgun Gothic', 'AppleGothic', 'DejaVu Sans']
-
-applied_font = 'DejaVu Sans'
-for tf in target_fonts:
-    if tf in font_list:
-        applied_font = tf
+# 사용 가능한 폰트 중 나눔계열 우선 적용
+for font in fm.fontManager.ttflist:
+    if 'Nanum' in font.name or 'Malgun' in font.name or 'AppleGothic' in font.name:
+        plt.rcParams['font.family'] = font.name
         break
-
-plt.rcParams['font.family'] = applied_font
 
 # 페이지 설정 (사이드바 기본 열림)
 st.set_page_config(
@@ -211,7 +210,7 @@ with col_right:
 
 st.divider()
 
-# 7. 파이그래프 시각화 영역
+# 7. 파이그래프 시각화 영역 (폰트 속성 명시적 지정)
 st.subheader("📈 백업 완료 vs 미완료 현황 비율")
 
 fig, ax = plt.subplots(figsize=(6, 6))
@@ -219,16 +218,19 @@ labels = ['Backup 완료', 'Backup 미완료 또는 불가']
 sizes = [backup_completed_total_count, backup_minus_total_count]
 colors = ['#4CAF50', '#FF9800']
 
+current_font = plt.rcParams['font.family']
+
 wedges, texts, autotexts = ax.pie(
     sizes, 
     labels=labels, 
     autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,}대)', 
     startangle=90, 
     colors=colors,
-    textprops=dict(color="black", fontsize=11)
+    textprops=dict(color="black", fontsize=11, family=current_font)
 )
-plt.setp(autotexts, size=11, weight="bold")
-ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold")
+plt.setp(texts, family=current_font)
+plt.setp(autotexts, size=11, weight="bold", family=current_font)
+ax.set_title("백업 완료 및 미완료 비율", fontsize=13, pad=15, weight="bold", fontname=current_font)
 
 col_chart1, col_chart2, col_chart3 = st.columns([1, 2, 1])
 with col_chart2:
