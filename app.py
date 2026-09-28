@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import glob
 import os
+import re
 from datetime import datetime
 
 # 페이지 설정
@@ -50,16 +51,37 @@ total_equipment_count = len(df_filtered) # 전체 장비수량(대)
 backup_all_df = df_filtered[df_filtered['관리대상'].astype(str).str.contains('backup', na=False, case=False)]
 backup_target_count = len(backup_all_df) # backup 대상장비수량(대)
 
-# Backup 완료 (backup + 포함)
+# 기본 카테고리 계산
 backup_completed_count = len(df_filtered[
     df_filtered['관리대상'].astype(str).str.contains('backup', na=False, case=False) & 
     df_filtered['관리대상'].astype(str).str.contains(r'\+', na=False, regex=True)
 ])
-
-# [추가 구분 항목 계산]
 backup_pm_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'pm', na=False, case=False)])
 backup_warranty_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'보증', na=False, case=False)])
 backup_rental_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'임대', na=False, case=False)])
+
+# [추가] Backup-(*) 형태 또는 기타 상세 세부 패턴 추출 및 카운트
+def classify_backup(val):
+    val_str = str(val)
+    if re.search(r'\+', val_str):
+        return 'Backup 완료 (+)'
+    if re.search(r'pm', val_str, re.IGNORECASE):
+        return 'Backup (PM)'
+    if '보증' in val_str:
+        return 'Backup (보증)'
+    if '임대' in val_str:
+        return 'Backup (임대)'
+    
+    # BACKUP-(*) 패턴 추출
+    match = re.search(r'(BACKUP\s*-\s*\([^)]+\))', val_str, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return '기타 Backup(-)'
+
+backup_all_df['세부유형'] = backup_all_df['관리대상'].apply(classify_backup)
+
+# 괄호형 세부유형 집계 (예: BACKUP-(USB license), BACKUP-(WIN7) 등)
+specific_backup_counts = backup_all_df[~backup_all_df['세부유형'].isin(['Backup 완료 (+)', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)', '기타 Backup(-)'])].groupby('세부유형').size()
 
 # --- 화면 UI 구성 ---
 st.title("🏥 의료기기 백업(Backup) 현황 조회 대시보드")
@@ -67,7 +89,7 @@ st.title("🏥 의료기기 백업(Backup) 현황 조회 대시보드")
 # 참고 파일 및 기준일 안내 박스
 st.info(f"📁 **참고 파일명:** `{filename}` &nbsp;&nbsp;|&nbsp;&nbsp; 📅 **기준일:** `{기준일}`")
 
-# 4. 요약 대시보드 카드 (1단: 전체 및 메인 백업 지표)
+# 4. 요약 대시보드 카드 (1단: 전체 요약)
 st.subheader("📊 전체 백업 현황 요약")
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -77,7 +99,7 @@ with col2:
 with col3:
     st.metric(label="Backup 완료 (+)", value=f"{backup_completed_count:,} 대")
 
-# 요약 대시보드 카드 (2단: 상세 구분 지표)
+# 요약 대시보드 카드 (2단: 주요 구분 지표)
 col4, col5, col6 = st.columns(3)
 with col4:
     st.metric(label="Backup (PM)", value=f"{backup_pm_count:,} 대")
@@ -85,6 +107,14 @@ with col5:
     st.metric(label="Backup (보증)", value=f"{backup_warranty_count:,} 대")
 with col6:
     st.metric(label="Backup (임대)", value=f"{backup_rental_count:,} 대")
+
+# 요약 대시보드 카드 (3단: Backup-(*) 개별 세부 항목 동적 표시)
+if not specific_backup_counts.empty:
+    st.subheader("📌 Backup-(*) 세부 유형별 현황")
+    sub_cols = st.columns(len(specific_backup_counts) if len(specific_backup_counts) <= 4 else 4)
+    for idx, (sub_type, count) in enumerate(specific_backup_counts.items()):
+        with sub_cols[idx % len(sub_cols)]:
+            st.metric(label=sub_type, value=f"{count:,} 대")
 
 st.divider()
 
@@ -100,7 +130,9 @@ with filter_col2:
     selected_dept = st.selectbox("사용부서 선택", ["전체 부서"] + departments)
 
 with filter_col3:
-    category_filter = st.selectbox("백업 세부 유형 필터", ["전체보기", "Backup 완료 (+)", "Backup (PM)", "Backup (보증)", "Backup (임대)"])
+    # 필터 드롭다운에 기본 유형 + 발견된 BACKUP-(*) 세부 유형들 동적 추가
+    filter_options = ["전체보기", "Backup 완료 (+)", "Backup (PM)", "Backup (보증)", "Backup (임대)"] + list(specific_backup_counts.index) + ["기타 Backup(-)"]
+    category_filter = st.selectbox("백업 세부 유형 필터", filter_options)
 
 # 필터 적용 로직
 view_df = backup_all_df.copy()
@@ -114,14 +146,8 @@ if search_query:
 if selected_dept != "전체 부서":
     view_df = view_df[view_df['사용 부서'].astype(str) == selected_dept]
 
-if category_filter == "Backup 완료 (+)":
-    view_df = view_df[view_df['관리대상'].astype(str).str.contains(r'\+', na=False, regex=True)]
-elif category_filter == "Backup (PM)":
-    view_df = view_df[view_df['관리대상'].astype(str).str.contains(r'pm', na=False, case=False)]
-elif category_filter == "Backup (보증)":
-    view_df = view_df[view_df['관리대상'].astype(str).str.contains(r'보증', na=False, case=False)]
-elif category_filter == "Backup (임대)":
-    view_df = view_df[view_df['관리대상'].astype(str).str.contains(r'임대', na=False, case=False)]
+if category_filter != "전체보기":
+    view_df = view_df[view_df['세부유형'] == category_filter]
 
 # 6. 결과 테이블 출력
 st.subheader(f"📋 백업 대상 장비 목록 (총 {len(view_df):,}건)")
