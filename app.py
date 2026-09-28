@@ -48,46 +48,53 @@ df_filtered = df[df['사용 부서'].astype(str).str.strip() != '88'].copy()
 total_equipment_count = len(df_filtered) # 전체 장비수량(대)
 
 # Backup 전체 대상
-backup_all_df = df_filtered[df_filtered['관리대상'].astype(str).str.contains('backup', na=False, case=False)]
+backup_all_df = df_filtered[df_filtered['관리대상'].astype(str).str.contains('backup', na=False, case=False)].copy()
 backup_target_count = len(backup_all_df) # backup 대상장비수량(대)
 
-# 기본 카테고리 계산
-backup_completed_count = len(df_filtered[
-    df_filtered['관리대상'].astype(str).str.contains('backup', na=False, case=False) & 
-    df_filtered['관리대상'].astype(str).str.contains(r'\+', na=False, regex=True)
-])
-backup_pm_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'pm', na=False, case=False)])
-backup_warranty_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'보증', na=False, case=False)])
-backup_rental_count = len(backup_all_df[backup_all_df['관리대상'].astype(str).str.contains(r'임대', na=False, case=False)])
-
-# [추가] BACKUP- 관련 항목 카운트 (완료, PM, 보증, 임대가 아니면서 BACKUP-이 포함된 항목)
-def classify_backup(val):
+# [수정] 상호 배타적 엄격 분류 함수 (완료 '+'가 포함된 경우 보증/임대/PM 등에서 철저히 제외)
+def strict_exclusive_classify(val):
     val_str = str(val)
+    # 1. 완료(+)가 포함된 경우 무조건 'Backup 완료 (+)'로 최우선 분류
     if re.search(r'\+', val_str):
         return 'Backup 완료 (+)'
-    if re.search(r'pm', val_str, re.IGNORECASE):
-        return 'Backup (PM)'
+    
+    # 2. 보증 포함 건 (+ 제외)
     if '보증' in val_str:
         return 'Backup (보증)'
+    
+    # 3. 임대 포함 건 (+ 제외)
     if '임대' in val_str:
         return 'Backup (임대)'
-    
-    # BACKUP- 포함 항목 (기본 백업 및 괄호형 세부 항목)
+        
+    # 4. PM 포함 건 (+ 제외)
+    if re.search(r'pm', val_str, re.IGNORECASE):
+        return 'Backup (PM)'
+        
+    # 5. BACKUP-(*) 괄호 세부 유형
+    match = re.search(r'(BACKUP\s*-\s*\([^)]+\))', val_str, re.IGNORECASE)
+    if match:
+        sub = match.group(1).upper()
+        if sub not in ['BACKUP-(PM)', 'BACKUP-(보증)', 'BACKUP-(임대)']:
+            return sub
+            
+    # 6. 기본 BACKUP- 형태
     if re.search(r'BACKUP-', val_str, re.IGNORECASE):
-        match = re.search(r'(BACKUP\s*-\s*\([^)]+\))', val_str, re.IGNORECASE)
-        if match:
-            return match.group(1).upper()
         return 'BACKUP-'
         
     return '기타'
 
-backup_all_df['세부유형'] = backup_all_df['관리대상'].apply(classify_backup)
+backup_all_df['세부유형'] = backup_all_df['관리대상'].apply(strict_exclusive_classify)
 
-# BACKUP- 단독 항목 집계 (정확히 BACKUP- 이 포함되거나 시작하는 기본형)
+# 각 항목별 카운트 계산
+backup_completed_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup 완료 (+)'])
 backup_minus_count = len(backup_all_df[backup_all_df['세부유형'] == 'BACKUP-'])
+backup_pm_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup (PM)'])
+backup_warranty_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup (보증)'])
+backup_rental_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup (임대)'])
 
-# 기타 괄호형 세부유형 집계 (예: BACKUP-(USB license), BACKUP-(WIN7) 등)
-specific_backup_counts = backup_all_df[~backup_all_df['세부유형'].isin(['Backup 완료 (+)', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)', 'BACKUP-', '기타'])].groupby('세부유형').size()
+# 기타 괄호형 세부유형 집계
+excluded_types = ['Backup 완료 (+)', 'BACKUP-', 'Backup (PM)', 'Backup (보증)', 'Backup (임대)', '기타']
+specific_backup_counts = backup_all_df[~backup_all_df['세부유형'].isin(excluded_types)].groupby('세부유형').size()
 
 # --- 화면 UI 구성 ---
 st.title("🏥 의료기기 백업(Backup) 현황 조회 대시보드")
