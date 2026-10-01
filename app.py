@@ -90,7 +90,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.markdown("#### 🛠️ 개발 앱 목록")
+    st.markdown("#### 🛠️️ 개발 앱 목록")
     st.markdown("""
     1. [의료장비 투자집행 계획 실적](https://buly.kr/DEbvdwF)
     2. [인하대병원 의료장비 보유 현황](https://buly.kr/7mERs3u)
@@ -195,8 +195,8 @@ backup_minus_total_count = backup_minus_base_count + specific_backup_counts.sum(
 # --- 화면 메인 UI 구성 ---
 st.title("의료기기 백업 현황 대시보드")
 
-# 참고 파일 및 기준일 안내 박스
-st.info(f"📁 **참고 파일명:** `{filename}` &nbsp;&nbsp;|&nbsp;&nbsp; 📅 **기준일:** `{기준일}`")
+# 참고 파일 및 기준일 안내 박스 (기준일 옆에 전처리 제외 기준 명시)
+st.info(f"📁 **참고 파일명:** `{filename}` &nbsp;&nbsp;|&nbsp;&nbsp; 📅 **기준일:** `{기준일}` &nbsp;&nbsp;|&nbsp;&nbsp; ⚠️ **전체 장비 제외 기준:** `사용부서 '88' 또는 공란, 취득일자 공란`")
 
 # 전체 장비 및 대상 수량
 top_col1, top_col2 = st.columns(2)
