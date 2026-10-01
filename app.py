@@ -129,25 +129,19 @@ if df is None:
     st.stop()
 
 # 4. 전처리: 예외 조건 적용
-# - 사용부서가 '88'인 항목 제외
+# - 사용부서가 '88'이거나 공란인 항목 제외
 # - 취득일자가 공란인 항목 제외
-# - 사용부서가 공란이고 취득가(또는 취득금액)가 비어있는 항목 제외
-df_filtered = df[df['사용 부서'].astype(str).str.strip() != '88'].copy()
+df_filtered = df.copy()
+
+if '사용 부서' in df_filtered.columns:
+    dept_str = df_filtered['사용 부서'].astype(str).str.strip()
+    valid_dept = (~dept_str.isin(['88', '', 'nan', 'None', 'NaN'])) & df_filtered['사용 부서'].notna()
+    df_filtered = df_filtered[valid_dept].copy()
 
 if '취득일자' in df_filtered.columns:
-    df_filtered = df_filtered[df_filtered['취득일자'].notna()].copy()
-
-# 취득가 컬럼 확인 후 사용부서와 동시 공란인 경우 제외
-price_col = None
-for col in ['취득가', '취득금액']:
-    if col in df_filtered.columns:
-        price_col = col
-        break
-
-if price_col:
-    blank_dept = df_filtered['사용 부서'].isna() | (df_filtered['사용 부서'].astype(str).str.strip().isin(['', 'nan', 'None']))
-    blank_price = df_filtered[price_col].isna() | (df_filtered[price_col].astype(str).str.strip().isin(['', 'nan', 'None', '0']))
-    df_filtered = df_filtered[~(blank_dept & blank_price)].copy()
+    date_str = df_filtered['취득일자'].astype(str).str.strip()
+    valid_date = (~date_str.isin(['', 'nan', 'None', 'NaN', 'NaT'])) & df_filtered['취득일자'].notna()
+    df_filtered = df_filtered[valid_date].copy()
 
 # 5. 대시보드 지표 계산
 total_equipment_count = len(df_filtered) # 전체 장비수량(대)
