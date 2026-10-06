@@ -268,35 +268,38 @@ with col_chart2:
 
 st.divider()
 
-# 8. [신규 추가] 관리대상이 'Backup (보증)'인 항목 중 무상보증 기한이 지난 장비 리스트
+# 8. [신규 추가] 관리대상이 'Backup (보증)'인 항목 중 '무상보증' 컬럼 날짜가 오늘보다 이전인 장비 리스트
 st.subheader("🚨 'Backup (보증)' 장비 중 무상보증 기한 경과 리스트")
 
 # 관리대상 세부유형이 'Backup (보증)'인 데이터 추출
 warranty_items_df = backup_all_df[backup_all_df['세부유형'] == 'Backup (보증)'].copy()
 
-# 보증 기한 관련 컬럼 탐색 (예: '무상보증기한', '보증기한', '보증종료일' 등)
-warranty_date_col = None
-for col in df_filtered.columns:
-    if '보증' in col and ('기한' in col or '일' in col or '종료' in col or '만료' in col):
-        warranty_date_col = col
-        break
+# 정확히 '무상보증' 컬럼을 타겟팅 (없을 경우 '보증'이 포함된 다른 컬럼 탐색)
+target_warranty_col = None
+if '무상보증' in df_filtered.columns:
+    target_warranty_col = '무상보증'
+else:
+    for col in df_filtered.columns:
+        if '보증' in col and ('기한' in col or '일' in col or '종료' in col or '만료' in col):
+            target_warranty_col = col
+            break
 
-if warranty_date_col and not warranty_items_df.empty:
+if target_warranty_col and not warranty_items_df.empty:
     # 날짜형으로 변환 후 오늘(2026-10-06) 기준 경과 여부 확인
     today = pd.Timestamp.today().normalize()
-    warranty_items_df['parsed_warranty_date'] = pd.to_datetime(warranty_items_df[warranty_date_col], errors='coerce')
+    warranty_items_df['parsed_warranty_date'] = pd.to_datetime(warranty_items_df[target_warranty_col], errors='coerce')
     
-    # 기한이 지났고(오늘보다 이전) 날짜 값이 유효한 항목 필터링
+    # 무상보증 컬럼 날짜가 오늘보다 이전인 항목 필터링
     expired_warranty_df = warranty_items_df[
         (warranty_items_df['parsed_warranty_date'].notna()) & 
         (warranty_items_df['parsed_warranty_date'] < today)
     ].copy()
     
-    st.metric(label="Backup (보증) 중 기한 경과 장비 수량", value=f"{len(expired_warranty_df):,} 대")
+    st.metric(label="Backup (보증) 중 무상보증 경과 장비 수량", value=f"{len(expired_warranty_df):,} 대")
     
     if not expired_warranty_df.empty:
-        st.markdown(f"<p style='color: #FF5252; font-weight: bold;'>⚠️ 기준일(오늘) 기준으로 'Backup (보증)' 중 무상보증 기한이 만료된 장비 목록입니다. (기준 컬럼: {warranty_date_col})</p>", unsafe_allow_html=True)
-        expired_display_cols = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '모델', '일련번호', '관리대상', warranty_date_col, '취득일자'] if col in expired_warranty_df.columns]
+        st.markdown(f"<p style='color: #FF5252; font-weight: bold;'>⚠️ 오늘 기준('무상보증' 컬럼)으로 기한이 만료된 장비 목록입니다. (기준 컬럼: {target_warranty_col})</p>", unsafe_allow_html=True)
+        expired_display_cols = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '모델', '일련번호', '관리대상', target_warranty_col, '취득일자'] if col in expired_warranty_df.columns]
         st.dataframe(
             expired_warranty_df[expired_display_cols],
             use_container_width=True,
@@ -306,7 +309,7 @@ if warranty_date_col and not warranty_items_df.empty:
         st.success("현재 'Backup (보증)' 장비 중 무상보증 기한이 경과된 항목이 없습니다.")
 else:
     if not warranty_items_df.empty:
-        st.warning("엑셀 파일 내에 '보증' 관련 날짜(기한/종료일 등) 컬럼을 자동으로 식별하지 못했습니다. 컬럼명을 확인해 주세요.")
+        st.warning("엑셀 파일 내에 '무상보증' 또는 관련 날짜 컬럼을 찾지 못했습니다. 컬럼명을 확인해 주세요.")
         st.dataframe(warranty_items_df[['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '관리대상']], use_container_width=True, hide_index=True)
     else:
         st.info("관리대상에 'Backup (보증)'으로 분류된 장비가 존재하지 않습니다.")
