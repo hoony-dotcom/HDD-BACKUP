@@ -148,7 +148,6 @@ total_equipment_count = len(df_filtered) # 전체 장비수량(대)
 
 # Backup 전체 대상
 backup_all_df = df_filtered[df_filtered['관리대상'].astype(str).str.contains('backup', na=False, case=False)].copy()
-backup_target_count = len(backup_all_df) # backup 대상장비수량(대)
 
 # 분류 함수
 def classify_backup(val):
@@ -174,6 +173,7 @@ def classify_backup(val):
     return '기타'
 
 backup_all_df['세부유형'] = backup_all_df['관리대상'].apply(classify_backup)
+backup_target_count = len(backup_all_df) # backup 대상장비수량(대)
 
 # 개별 항목별 카운트 계산
 base_completed_count = len(backup_all_df[backup_all_df['세부유형'] == 'Backup 완료 (+)'])
@@ -268,11 +268,11 @@ with col_chart2:
 
 st.divider()
 
-# 8. [신규 추가] 관리대상 중 '보증' 포함 항목 중 무상보증 기한이 지난 장비 리스트
-st.subheader("🚨 무상보증 기한 경과 장비 리스트 (보증 항목)")
+# 8. [신규 추가] 관리대상이 'Backup (보증)'인 항목 중 무상보증 기한이 지난 장비 리스트
+st.subheader("🚨 'Backup (보증)' 장비 중 무상보증 기한 경과 리스트")
 
-# 관리대상에 '보증'이 포함된 데이터 추출
-warranty_items_df = backup_all_df[backup_all_df['관리대상'].astype(str).str.contains('보증', na=False, case=False)].copy()
+# 관리대상 세부유형이 'Backup (보증)'인 데이터 추출
+warranty_items_df = backup_all_df[backup_all_df['세부유형'] == 'Backup (보증)'].copy()
 
 # 보증 기한 관련 컬럼 탐색 (예: '무상보증기한', '보증기한', '보증종료일' 등)
 warranty_date_col = None
@@ -292,10 +292,10 @@ if warranty_date_col and not warranty_items_df.empty:
         (warranty_items_df['parsed_warranty_date'] < today)
     ].copy()
     
-    st.metric(label="무상보증 기한 경과 장비 수량", value=f"{len(expired_warranty_df):,} 대")
+    st.metric(label="Backup (보증) 중 기한 경과 장비 수량", value=f"{len(expired_warranty_df):,} 대")
     
     if not expired_warranty_df.empty:
-        st.markdown(f"<p style='color: #FF5252; font-weight: bold;'>⚠️ 기준일(오늘) 기준으로 무상보증 기한이 만료된 장비 목록입니다. (기준 컬럼: {warranty_date_col})</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #FF5252; font-weight: bold;'>⚠️ 기준일(오늘) 기준으로 'Backup (보증)' 중 무상보증 기한이 만료된 장비 목록입니다. (기준 컬럼: {warranty_date_col})</p>", unsafe_allow_html=True)
         expired_display_cols = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '모델', '일련번호', '관리대상', warranty_date_col, '취득일자'] if col in expired_warranty_df.columns]
         st.dataframe(
             expired_warranty_df[expired_display_cols],
@@ -303,14 +303,13 @@ if warranty_date_col and not warranty_items_df.empty:
             hide_index=True
         )
     else:
-        st.success("현재 무상보증 기한이 경과된 보증 장비가 없습니다.")
+        st.success("현재 'Backup (보증)' 장비 중 무상보증 기한이 경과된 항목이 없습니다.")
 else:
-    # 만약 보증 기한 컬럼을 찾지 못했거나 보증 항목이 없을 경우
     if not warranty_items_df.empty:
         st.warning("엑셀 파일 내에 '보증' 관련 날짜(기한/종료일 등) 컬럼을 자동으로 식별하지 못했습니다. 컬럼명을 확인해 주세요.")
         st.dataframe(warranty_items_df[['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '관리대상']], use_container_width=True, hide_index=True)
     else:
-        st.info("관리대상에 '보증' 문구가 포함된 장비가 존재하지 않습니다.")
+        st.info("관리대상에 'Backup (보증)'으로 분류된 장비가 존재하지 않습니다.")
 
 st.divider()
 
