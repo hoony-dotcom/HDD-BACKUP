@@ -90,7 +90,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.markdown("#### 🛠️️ 개발 앱 목록")
+    st.markdown("#### 🛠 개발 앱 목록")
     st.markdown("""
     1. [의료장비 투자집행 계획 실적](https://buly.kr/DEbvdwF)
     2. [인하대병원 의료장비 보유 현황](https://buly.kr/7mERs3u)
@@ -292,7 +292,7 @@ if warranty_date_col and not warranty_items_df.empty:
         (warranty_items_df['parsed_warranty_date'] < today)
     ].copy()
     
-    st.metric(label="무상보증 기한 경과 장비 수량", value=f"{len(expired_warranty_df):, 대")
+    st.metric(label="무상보증 기한 경과 장비 수량", value=f"{len(expired_warranty_df):,} 대")
     
     if not expired_warranty_df.empty:
         st.markdown(f"<p style='color: #FF5252; font-weight: bold;'>⚠️ 기준일(오늘) 기준으로 무상보증 기한이 만료된 장비 목록입니다. (기준 컬럼: {warranty_date_col})</p>", unsafe_allow_html=True)
