@@ -268,7 +268,53 @@ with col_chart2:
 
 st.divider()
 
-# 8. [크기 50% 축소 및 폰트 깨짐 방지 적용] '의공담당'별 백업 미완료 또는 불가 현황 그래프 및 상세표
+# 8. [신규 추가] 관리대상 중 '보증' 포함 항목 중 무상보증 기한이 지난 장비 리스트
+st.subheader("🚨 무상보증 기한 경과 장비 리스트 (보증 항목)")
+
+# 관리대상에 '보증'이 포함된 데이터 추출
+warranty_items_df = backup_all_df[backup_all_df['관리대상'].astype(str).str.contains('보증', na=False, case=False)].copy()
+
+# 보증 기한 관련 컬럼 탐색 (예: '무상보증기한', '보증기한', '보증종료일' 등)
+warranty_date_col = None
+for col in df_filtered.columns:
+    if '보증' in col and ('기한' in col or '일' in col or '종료' in col or '만료' in col):
+        warranty_date_col = col
+        break
+
+if warranty_date_col and not warranty_items_df.empty:
+    # 날짜형으로 변환 후 오늘(2026-10-06) 기준 경과 여부 확인
+    today = pd.Timestamp.today().normalize()
+    warranty_items_df['parsed_warranty_date'] = pd.to_datetime(warranty_items_df[warranty_date_col], errors='coerce')
+    
+    # 기한이 지났고(오늘보다 이전) 날짜 값이 유효한 항목 필터링
+    expired_warranty_df = warranty_items_df[
+        (warranty_items_df['parsed_warranty_date'].notna()) & 
+        (warranty_items_df['parsed_warranty_date'] < today)
+    ].copy()
+    
+    st.metric(label="무상보증 기한 경과 장비 수량", value=f"{len(expired_warranty_df):, 대")
+    
+    if not expired_warranty_df.empty:
+        st.markdown(f"<p style='color: #FF5252; font-weight: bold;'>⚠️ 기준일(오늘) 기준으로 무상보증 기한이 만료된 장비 목록입니다. (기준 컬럼: {warranty_date_col})</p>", unsafe_allow_html=True)
+        expired_display_cols = [col for col in ['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '모델', '일련번호', '관리대상', warranty_date_col, '취득일자'] if col in expired_warranty_df.columns]
+        st.dataframe(
+            expired_warranty_df[expired_display_cols],
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.success("현재 무상보증 기한이 경과된 보증 장비가 없습니다.")
+else:
+    # 만약 보증 기한 컬럼을 찾지 못했거나 보증 항목이 없을 경우
+    if not warranty_items_df.empty:
+        st.warning("엑셀 파일 내에 '보증' 관련 날짜(기한/종료일 등) 컬럼을 자동으로 식별하지 못했습니다. 컬럼명을 확인해 주세요.")
+        st.dataframe(warranty_items_df[['관리번호', '장비명/구성품명', '사용 부서', '의공담당', '관리대상']], use_container_width=True, hide_index=True)
+    else:
+        st.info("관리대상에 '보증' 문구가 포함된 장비가 존재하지 않습니다.")
+
+st.divider()
+
+# 9. [크기 50% 축소 및 폰트 깨짐 방지 적용] '의공담당'별 백업 미완료 또는 불가 현황 그래프 및 상세표
 st.subheader("👤 의공담당별 백업 미완료 또는 불가 현황")
 
 manager_col = '의공담당'
@@ -319,7 +365,7 @@ else:
 
 st.divider()
 
-# 9. 일반 검색 및 전체 필터 영역
+# 10. 일반 검색 및 전체 필터 영역
 st.subheader("🔍 전체 장비 검색 및 필터")
 filter_col1, filter_col2, filter_col3 = st.columns(3)
 
